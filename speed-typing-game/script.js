@@ -1,19 +1,9 @@
 /*  TODO:
     - show high score, store it in local storage
-    - load random words from an API
  */
-
- // VARIABLES
- let words = ['magic', 'journey', 'travel', 'explore', 'life', 
-'experience', 'happiness', 'gratitude', 'discipline', 'exercise', 
-'workout', 'friendship', 'practice', 'routine', 'morning', 'reading', 
-'books', 'education', 'amour', 'delibrate', 'protein', 'partner',
-'empathy', 'concert', 'patience', 'humor', 'resilience', 'confidence',
-'consistency', 'appreciation', 'literature', 'meaning', 'humble',
-'province', 'flight', 'alchemy', 'intense', 'adorable', 'swoon', 'stunning',
-'sensational', 'provocative', 'apocalypse', 'compliance', 'meticulous',
-'replicate', 'relentless', 'pursuit', 'proactive', 'astounding',
-'delightful', 'legitimate', 'mesmerizing', 'polarizing', 'validate'];
+let words = [];
+let globalWordIndex = 49;
+const nWords = 50;
 
 const levels = {
     easy: 5,
@@ -22,6 +12,7 @@ const levels = {
 };
 let currentLevel = levels.easy;
 let timeCount = currentLevel + 1, scoreCount = 0, isPlaying, wordDisplayed;
+let wordToWrite, correctlyTypedWord;
 
 let currentWord  = document.querySelector('#current-word'),
     inputWord = document.querySelector('#input-word'),
@@ -31,9 +22,11 @@ let currentWord  = document.querySelector('#current-word'),
     message = document.querySelector('#message'),
     difficultyLevel = document.querySelector('#difficulty');
 
+let correctlyTypedWordSpan = document.createElement('span');
+correctlyTypedWordSpan.classList.add('bg-warning');
 
 // EVENT LISTENERS
-window.addEventListener('load', init);
+window.addEventListener('load', () => fetchWords(50, init));
 inputWord.addEventListener('input', startMatch);
 difficultyLevel.addEventListener('change', changeLevel);
 
@@ -44,17 +37,22 @@ function init() {
     showWord();
     // call the countdown function every second
     setInterval(countdown, 1000);
-    // cheking the game status every 0.1s
-    setInterval(checkStatus, 100);
+    // checking the game status every 0.1s
+    setInterval(checkStatus, 500);
 }
 function showWord() {
-    let randomIndex = Math.floor(Math.random() * words.length);
-    wordDisplayed = words[randomIndex];
-    currentWord.textContent = wordDisplayed;
+    let wordIndex = globalWordIndex++ % nWords;
+    wordDisplayed = words[wordIndex];
+
+    wordToWrite = wordDisplayed;
+    correctlyTypedWord = '';
+    correctlyTypedWordSpan.textContent = '';
+
+    currentWord.appendChild(correctlyTypedWordSpan);
+    currentWord.appendChild(document.createTextNode(wordDisplayed));
 }
 function countdown() {
     if (timeCount > 0) {
-        // console.log(timeCount);
         timeCount--;   
         timeLeft.textContent = timeCount;
     } else if(timeCount === 0) {
@@ -68,7 +66,18 @@ function checkStatus() {
         message.className = 'mt-3 text-danger';
     }
 }
+// Called on keyboard input
 function startMatch() {
+    if (this.value[this.value.length-1] === wordToWrite[0]) {
+       correctlyTypedWord += wordToWrite[0];
+       wordToWrite = wordToWrite.substr(1, wordToWrite.length); 
+       currentWord.textContent = '';
+       correctlyTypedWordSpan.textContent = correctlyTypedWord;
+       currentWord.appendChild(correctlyTypedWordSpan);
+       currentWord.appendChild(document.createTextNode(wordToWrite));
+    } else {
+        this.value = this.value.slice(0, this.value.length-1);
+    }
     if (this.value === wordDisplayed) {
         isPlaying = true;
         message.textContent  = 'Correct!!'
@@ -102,4 +111,16 @@ function changeLevel() {
         timeCount = currentLevel + 1;
         startMatch();
     }
+}
+// FETCH REQUESTS
+
+// Get n words from an API and saves them to the global variables words, 
+// then call the callback function (which is supposed to be init())
+function fetchWords(n, callbackFn){
+fetch(`https://random-word-api.herokuapp.com/word?number=${n}&swear=0`)
+    .then(response => response.json())
+    .then(json => {
+        words = json;
+        callbackFn();
+    });
 }
